@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}Início · Dicionário de Dados{% endblock %}
+
+{% block content %}
+<header class="hero fade-in">
+    <span class="eyebrow"><i class="bi bi-stars"></i> Projeto 1 · Ciência de Dados</span>
+    <h1 class="hero-title">Análise Exploratória de <span class="text-gradient">Métricas NBA</span></h1>
+    <p class="hero-subtitle">
+        Qualidade dos dados, detecção de outliers e estatística descritiva das principais
+        métricas de box score: {{ target_vars | join(', ') }}.
+    </p>
+    <a href="{{ url_for('descritiva') }}" class="btn btn-accent btn-lg mt-2" id="btn-start">
+        Explorar estatísticas <i class="bi bi-arrow-right ms-1"></i>
+    </a>
+</header>
+
+<!-- ================= KPIs ================= -->
+<section class="row g-3 mb-5" aria-label="Resumo da base de dados">
+    {% set kpis = [
+        ('bi-file-earmark-spreadsheet', 'Bruto (Linhas × Col.)', (summary.n_raw_rows | num) ~ ' × ' ~ (summary.n_raw_cols | num)),
+        ('bi-table', 'Limpo (Linhas × Col.)', (summary.n_rows | num) ~ ' × ' ~ (summary.n_cols | num)),
+        ('bi-shield', 'Times', summary.n_teams | num),
+        ('bi-calendar-event', 'Jogos Únicos', summary.n_games | num),
+        ('bi-check2-circle', 'Colunas Tratadas', summary.n_cols | num),
+        ('bi-exclamation-diamond', 'Células em falta', (summary.pct_missing | num) ~ ' %'),
+    ] %}
+    {% for icon, label, value in kpis %}
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="glass-card kpi-card fade-in" style="animation-delay: {{ loop.index0 * 60 }}ms">
+            <i class="bi {{ icon }} kpi-icon"></i>
+            <div class="kpi-value">{{ value }}</div>
+            <div class="kpi-label">{{ label }}</div>
+        </div>
+    </div>
+    {% endfor %}
+</section>
+
+<!-- ================= DICIONÁRIO ================= -->
+<section class="glass-card mb-5 fade-in" aria-labelledby="dict-title">
+    <h2 class="h4 mb-1" id="dict-title">Dicionário de Metadados</h2>
+    <p class="text-secondary small mb-3">Variáveis assinaladas com <span class="badge badge-accent">alvo</span> são objeto da análise estatística.</p>
+    <div class="table-responsive">
+        <table class="table table-glass align-middle" id="dictionary-table">
+            <thead>
+                <tr><th>Coluna</th><th>Nome</th><th>Descrição</th><th>Tipo</th><th>Unidade</th></tr>
+            </thead>
+            <tbody>
+                {% for item in dictionary %}
+                <tr>
+                    <td><code>{{ item.column }}</code>
+                        {% if item.is_target %}<span class="badge badge-accent ms-1">alvo</span>{% endif %}</td>
+                    <td class="fw-semibold">{{ item.label }}</td>
+                    <td class="text-secondary">{{ item.desc }}</td>
+                    <td><span class="badge badge-soft">{{ item.type }}</span></td>
+                    <td>{{ item.unit }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- ================= PRÉ-VISUALIZAÇÃO (BRUTO) ================= -->
+<section class="glass-card mb-5 fade-in" aria-labelledby="raw-preview-title">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h2 class="h4 mb-1" id="raw-preview-title">Pré-visualização do Arquivo Bruto (<code>data/raw/</code>)</h2>
+            <p class="text-secondary small mb-0">Dados originais antes da padronização e limpeza.</p>
+        </div>
+        <span class="badge badge-soft">{{ summary.n_raw_rows | num }} linhas × {{ summary.n_raw_cols | num }} colunas</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-glass table-sm small mb-0" id="raw-preview-table">
+            <thead><tr>{% for c in raw_preview_cols %}<th>{{ c }}</th>{% endfor %}</tr></thead>
+            <tbody>
+                {% for row in raw_preview_rows %}
+                <tr>{% for v in row %}<td>{% if v is none %}<span class="text-missing">NaN</span>{% else %}{{ v }}{% endif %}</td>{% endfor %}</tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- ================= PRÉ-VISUALIZAÇÃO (TRATADO) ================= -->
+<section class="glass-card fade-in" aria-labelledby="preview-title">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h2 class="h4 mb-1" id="preview-title">Pré-visualização dos Dados Tratados (<code>data/processed/</code>)</h2>
+            <p class="text-secondary small mb-0">Dados após normalização de colunas, criação de <code>TEAM_ABBREVIATION</code> e correção de escalas.</p>
+        </div>
+        <span class="badge badge-accent">{{ summary.n_rows | num }} linhas × {{ summary.n_cols | num }} colunas</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-glass table-sm small mb-0" id="preview-table">
+            <thead><tr>{% for c in preview_cols %}<th>{{ c }}</th>{% endfor %}</tr></thead>
+            <tbody>
+                {% for row in preview_rows %}
+                <tr>{% for v in row %}<td>{% if v is none %}<span class="text-missing">NaN</span>{% else %}{{ v }}{% endif %}</td>{% endfor %}</tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,18 @@
+# ---------------------------------------------------------------
+# Projeto 1 LCD - NBA Analytics (Flask / Vercel Serverless)
+# ---------------------------------------------------------------
+
+# Camada web
+Flask>=3.0,<4.0
+
+# Manipulação e cálculo numérico
+pandas>=2.2,<3.0
+numpy>=1.26,<3.0
+scipy>=1.13,<2.0
+
+# Visualização interativa (compatível com plotly-2.27.0 no front-end)
+plotly>=5.22,<6.0
+
+# Machine learning / detecção de outliers (KNN, LOF, DBSCAN, Fairclough)
+scikit-learn>=1.5,<2.0
+

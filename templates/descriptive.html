@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block title %}Estatística Descritiva{% endblock %}
+{% block meta_description %}Medidas de tendência central, dispersão e forma das métricas NBA, com histograma e boxplot interativos.{% endblock %}
+
+{% block content %}
+{% set var_meta = dictionary.get(selected_variable, {}) %}
+
+<header class="page-header fade-in">
+    <span class="eyebrow"><i class="bi bi-bar-chart-line"></i> Análise Univariada</span>
+    <h1 class="page-title">Estatística Descritiva</h1>
+    <p class="page-subtitle">
+        Distribuição de <strong>{{ var_meta.get('label', selected_variable) }}</strong>
+        {% if selected_team == 'ALL' %}em todos os times{% else %}no time <strong>{{ selected_team }}</strong>{% endif %}.
+    </p>
+</header>
+
+<!-- ================= FILTROS ================= -->
+<form method="post" action="{{ url_for('descritiva') }}" class="glass-card filter-bar mb-4 fade-in" id="filter-form">
+    <div class="row g-3 align-items-end">
+        <div class="col-md-6">
+            <label for="team-select" class="form-label"><i class="bi bi-people me-1"></i>Time</label>
+            <select class="form-select" id="team-select" name="team" onchange="this.form.submit()">
+                <option value="ALL" {% if selected_team == 'ALL' %}selected{% endif %}>Todos os times</option>
+                {% for t in teams %}
+                <option value="{{ t }}" {% if t == selected_team %}selected{% endif %}>{{ t }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-6">
+            <label for="variable-select" class="form-label"><i class="bi bi-sliders me-1"></i>Variável</label>
+            <select class="form-select" id="variable-select" name="variable" onchange="this.form.submit()">
+                {% for v in variables %}
+                <option value="{{ v }}" {% if v == selected_variable %}selected{% endif %}>
+                    {{ v }} — {{ dictionary.get(v, {}).get('label', v) }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+    <noscript><button type="submit" class="btn btn-accent mt-3">Aplicar filtros</button></noscript>
+</form>
+
+<!-- ================= GRID: GRÁFICO | TABELA ================= -->
+<div class="row g-4">
+    <!-- Coluna 1: gráfico -->
+    <div class="col-lg-7">
+        <section class="glass-card h-100 fade-in" aria-labelledby="chart-title">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h2 class="h5 mb-0" id="chart-title">Histograma &amp; Boxplot</h2>
+                <span class="badge badge-soft">n = {{ stats.n | num }}</span>
+            </div>
+            {% if graph_json %}
+            <div id="chart" class="chart-container" role="img"
+                 aria-label="Histograma e boxplot de {{ selected_variable }}">
+                <div class="chart-loading"><div class="spinner-border text-accent" role="status"></div></div>
+            </div>
+            <div class="chart-legend small">
+                <span><i class="legend-line dash"></i>Média</span>
+                <span><i class="legend-line dot"></i>Mediana</span>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="bi bi-inbox"></i>
+                <p>Sem observações válidas para este filtro.</p>
+            </div>
+            {% endif %}
+        </section>
+    </div>
+
+    <!-- Coluna 2: medidas descritivas -->
+    <div class="col-lg-5">
+        <section class="glass-card h-100 fade-in" aria-labelledby="stats-title">
+            <h2 class="h5 mb-3" id="stats-title">Medidas Descritivas · {{ selected_variable }}</h2>
+
+            <div class="table-responsive">
+                <table class="table table-stats align-middle mb-3" id="stats-table">
+                    <tbody>
+                        {% for group, rows in stat_groups %}
+                        <tr class="group-row"><th colspan="3">{{ group }}</th></tr>
+                        {% for key, label, symbol in rows %}
+                        <tr>
+                            <td>{{ label }}</td>
+                            <td class="symbol">{{ symbol }}</td>
+                            <td class="value" id="stat-{{ key }}">
+                                {{ stats[key] | num(3 if key == 'skewness' else 2) }}{% if key == 'cv_pct' and stats[key] is not none %} %{% endif %}
+                                {% if key == 'mode' and stats.n_modes > 1 %}
+                                <span class="badge badge-soft ms-1" title="Distribuição multimodal: mostrada a menor moda">+{{ stats.n_modes - 1 }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Interpretação automática -->
+            <div class="insight-grid">
+                <div class="insight">
+                    <span class="insight-label">Forma</span>
+                    <span class="insight-value">{{ skew_text }}</span>
+                </div>
+                <div class="insight">
+                    <span class="insight-label">Dispersão relativa</span>
+                    <span class="insight-value">{{ cv_text }}</span>
+                </div>
+                <div class="insight">
+                    <span class="insight-label">Valores em falta</span>
+                    <span class="insight-value">{{ stats.n_missing | num }}</span>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if graph_json %}
+<script>
+    // Figura Plotly serializada no servidor (plotly.io.to_json)
+    const figure = {{ graph_json | safe }};
+    // renderPlotlyChart (static/js/charts.js) invoca Plotly.newPlot(...)
+    renderPlotlyChart("chart", figure);
+</script>
+{% endif %}
+{% endblock %}

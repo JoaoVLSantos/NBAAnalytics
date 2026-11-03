@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+
+{% block title %}Qualidade &amp; Missing{% endblock %}
+
+{% block content %}
+<header class="page-header fade-in">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-end gap-3">
+        <div>
+            <span class="eyebrow"><i class="bi bi-clipboard2-check"></i> Análise Técnica · Qualidade dos Dados</span>
+            <h1 class="page-title">Qualidade &amp; Valores em Falta</h1>
+            <p class="page-subtitle">
+                Contagem de valores ausentes por coluna, resultados numéricos dos testes formais de diagnóstico,
+                simulação de imputação e auditoria de escala do CSV bruto.
+            </p>
+        </div>
+        <a href="{{ url_for('teoria') }}#teoria-mecanismos" class="btn btn-sm badge-soft py-2 px-3">
+            <i class="bi bi-journal-bookmark me-1 text-accent"></i>Ver Explicações e Base Teórica
+        </a>
+    </div>
+</header>
+
+<!-- ================= KPIs DE QUALIDADE ================= -->
+<section class="row g-3 mb-5" aria-label="Indicadores de qualidade">
+    {% set kpis = [
+        ('bi-grid-3x3-gap', 'Células Analisadas', quality_kpis.total_cells | num),
+        ('bi-check-circle', 'Completude Global', (quality_kpis.pct_completeness | num) ~ ' %'),
+        ('bi-exclamation-triangle', 'Valores em Falta', quality_kpis.total_missing | num),
+        ('bi-files', 'Duplicados Removidos', quality_kpis.duplicates_removed | num),
+        ('bi-wrench-adjustable', 'Escalas Corrigidas (÷1000)', quality_kpis.total_scale_fixes | num),
+        ('bi-plus-square', 'Colunas Derivadas', quality_kpis.new_cols_created | num),
+    ] %}
+    {% for icon, label, value in kpis %}
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="glass-card kpi-card fade-in" style="animation-delay: {{ loop.index0 * 60 }}ms">
+            <i class="bi {{ icon }} kpi-icon"></i>
+            <div class="kpi-value">{{ value }}</div>
+            <div class="kpi-label">{{ label }}</div>
+        </div>
+    </div>
+    {% endfor %}
+</section>
+
+<!-- ================= 1. QUANTIDADE DE VALORES AUSENTES POR COLUNA ================= -->
+<section class="glass-card mb-5 fade-in" aria-labelledby="missing-table-title">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3 gap-2">
+        <div>
+            <h2 class="h4 mb-1" id="missing-table-title">1. Quantidade de Campos com Valores Ausentes por Coluna</h2>
+            <p class="text-secondary small mb-0">
+                Resultado de <code>missing_summary(DF)</code> sobre as 29 colunas da base tratada (<code>2 238</code> registos por coluna).
+            </p>
+        </div>
+        <span class="badge badge-soft" style="color: #a3e635; border-color: rgba(163,230,53,.3);">
+            Total de células ausentes: {{ quality_kpis.total_missing | num }} (0,00 %)
+        </span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-glass align-middle mb-0" id="missing-summary-table">
+            <thead>
+                <tr>
+                    <th>Coluna</th>
+                    <th>Nome</th>
+                    <th>Tipo (dtype)</th>
+                    <th class="text-end">Preenchidos</th>
+                    <th class="text-end">Valores Ausentes (NaN)</th>
+                    <th class="text-end">% Ausente</th>
+                    <th class="text-end">Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in missing_rows %}
+                <tr>
+                    <td><code>{{ row.column }}</code></td>
+                    <td class="fw-semibold">{{ row.label }}</td>
+                    <td><span class="badge badge-soft">{{ row.dtype }}</span></td>
+                    <td class="text-end">{{ row.valid | num }}</td>
+                    <td class="text-end fw-bold">{{ row.missing | num }}</td>
+                    <td class="text-end">{{ row.pct_missing | num(2) }} %</td>
+                    <td class="text-end">
+                        {% if row.missing == 0 %}
+                        <span class="badge badge-soft" style="color: #a3e635; border-color: rgba(163,230,53,.3);">0 Ausentes (100%)</span>
+                        {% else %}
+                        <span class="badge badge-accent">{{ row.missing | num }} Ausentes</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- ================= 2. RESULTADOS TÉCNICOS DOS 4 TESTES ESTATÍSTICOS ================= -->
+<section class="glass-card mb-5 fade-in" id="tests-results-section" aria-labelledby="tests-title">
+    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center mb-4 gap-3">
+        <div>
+            <h2 class="h4 mb-1" id="tests-title">2. Execução Técnica dos Testes de Diagnóstico de Missing</h2>
+            <p class="text-secondary small mb-0">
+                Resultados analíticos de Little, Jamshidian-Jalal, Listing &amp; Schlittgen (LS) e Regressão Logística de Fairclough.
+            </p>
+        </div>
+        <a href="{{ url_for('teoria') }}#teoria-testes-missing" class="btn btn-sm badge-soft py-2 px-3">
+            <i class="bi bi-book me-1 text-accent"></i>Consultar Teoria dos 4 Testes
+        </a>
+    </div>
+
+    <!-- Filtros de Cenário + Imputação -->
+    <form method="post" action="{{ url_for('qualidade') }}" class="row g-3 align-items-end mb-4 p-3 rounded-3"
+          style="background: rgba(255,255,255,0.02); border: 1px solid var(--border);" id="diagnostic-form">
+        <div class="col-md-4">
+            <label for="sim-mode-select" class="form-label"><i class="bi bi-cpu me-1"></i>Cenário de Teste</label>
+            <select class="form-select" id="sim-mode-select" name="sim_mode" onchange="this.form.submit()">
+                <option value="real" {% if selected_sim_mode == 'real' %}selected{% endif %}>Base Real (0 ausentes — 100% completa)</option>
+                <option value="mcar" {% if selected_sim_mode == 'mcar' %}selected{% endif %}>Simulação MCAR (6% ausente puro ao acaso)</option>
+                <option value="mar" {% if selected_sim_mode == 'mar' %}selected{% endif %}>Simulação MAR (ausência condicionada a REB+AST)</option>
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label for="variable-select" class="form-label"><i class="bi bi-sliders me-1"></i>Variável Alvo (Y_j)</label>
+            <select class="form-select" id="variable-select" name="variable" onchange="this.form.submit()">
+                {% for v in variables %}
+                <option value="{{ v }}" {% if v == selected_variable %}selected{% endif %}>
+                    {{ v }} — {{ dictionary.get(v, {}).get('label', v) }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label for="strategy-select" class="form-label"><i class="bi bi-magic me-1"></i>Estratégia de Imputação</label>
+            <select class="form-select" id="strategy-select" name="strategy" onchange="this.form.submit()">
+                <option value="median" {% if selected_strategy == 'median' %}selected{% endif %}>Mediana (robusta a outliers)</option>
+                <option value="mean" {% if selected_strategy == 'mean' %}selected{% endif %}>Média aritmética</option>
+                <option value="zero" {% if selected_strategy == 'zero' %}selected{% endif %}>Constante Zero (0)</option>
+            </select>
+        </div>
+    </form>
+
+    <!-- Tabela/Cartões de Resultados Numéricos dos 4 Testes -->
+    <div class="row g-3">
+        {% for t in tests_guide %}
+        {% set res = test_results[t.id] %}
+        <div class="col-lg-6" id="test-{{ t.id }}">
+            <div class="p-3 rounded-3 h-100 d-flex flex-column justify-content-between"
+                 style="background: rgba(255,255,255,0.03); border: 1px solid var(--border);">
+                <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                    <div>
+                        <h3 class="h6 fw-bold mb-1 text-accent">{{ t.name }}</h3>
+                        <a href="{{ url_for('teoria') }}#teoria-{{ t.id }}" class="small text-secondary text-decoration-none">
+                            <i class="bi bi-info-circle me-1"></i>Ver base teórica deste teste →
+                        </a>
+                    </div>
+                    <span class="badge text-nowrap {% if res.p_value < 0.05 %}badge-accent{% else %}badge-soft{% endif %}">
+                        p-valor = {{ res.p_value | num(4) }}
+                    </span>
+                </div>
+
+                <div class="insight-grid">
+                    <div class="insight">
+                        <span class="insight-label">Estatística do Teste</span>
+                        <span class="insight-value"><code>{{ res.statistic | num(3) }}</code></span>
+                    </div>
+                    <div class="insight">
+                        <span class="insight-label">Decisão Estatística</span>
+                        <span class="insight-value small">{{ res.decision }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+
+<!-- ================= 3. SIMULADOR DE IMPUTAÇÃO ================= -->
+<section class="glass-card mb-5 fade-in" id="impute-section" aria-labelledby="impute-title">
+    <h2 class="h5 mb-1" id="impute-title">3. Impacto da Imputação nas Medidas Descritivas (<code>impute()</code>)</h2>
+    <p class="text-secondary small mb-3">
+        Comparação de <strong>{{ selected_variable }}</strong> antes e depois da imputação por <code>{{ selected_strategy }}</code> no cenário selecionado acima.
+    </p>
+    <div class="table-responsive">
+        <table class="table table-glass align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Medida ({{ selected_variable }})</th>
+                    <th class="text-end">Antes da Imputação</th>
+                    <th class="text-end">Após Imputação ({{ selected_strategy }})</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Observações válidas (<code>n</code>)</td>
+                    <td class="text-end">{{ stats_before.n | num }}</td>
+                    <td class="text-end">{{ stats_after.n | num }}</td>
+                </tr>
+                <tr>
+                    <td>Valores ausentes (<code>n_missing</code>)</td>
+                    <td class="text-end">{{ stats_before.n_missing | num }}</td>
+                    <td class="text-end">{{ stats_after.n_missing | num }}</td>
+                </tr>
+                <tr>
+                    <td>Média (<code>x̄</code>)</td>
+                    <td class="text-end">{{ stats_before.mean | num }}</td>
+                    <td class="text-end">{{ stats_after.mean | num }}</td>
+                </tr>
+                <tr>
+                    <td>Mediana (<code>Md</code>)</td>
+                    <td class="text-end">{{ stats_before.median | num }}</td>
+                    <td class="text-end">{{ stats_after.median | num }}</td>
+                </tr>
+                <tr>
+                    <td>Desvio Padrão Amostral (<code>s</code>)</td>
+                    <td class="text-end">{{ stats_before.std | num }}</td>
+                    <td class="text-end">{{ stats_after.std | num }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- ================= 4. AUDITORIA DE LIMPEZA + GRÁFICO ================= -->
+<div class="row g-4">
+    <div class="col-lg-6">
+        <section class="glass-card h-100 fade-in" aria-labelledby="scale-title">
+            <h2 class="h5 mb-1" id="scale-title">4. Auditoria de Escala no CSV Bruto</h2>
+            <p class="text-secondary small mb-3">
+                Valores com 3 casas decimais exportados como inteiros (<code>&gt; 1.0</code>) e normalizados por <code>÷ 1000</code> em <code>clean_data()</code>.
+            </p>
+            <div class="table-responsive">
+                <table class="table table-glass align-middle mb-0" id="scale-fixes-table">
+                    <thead>
+                        <tr>
+                            <th>Coluna</th>
+                            <th>Descrição</th>
+                            <th class="text-end">Intactos (0–1)</th>
+                            <th class="text-end">Corrigidos</th>
+                            <th class="text-end">% Corrigida</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in scale_fixes %}
+                        <tr>
+                            <td><code>{{ item.column }}</code></td>
+                            <td>{{ item.label }}</td>
+                            <td class="text-end">{{ item.valid_original | num }}</td>
+                            <td class="text-end"><span class="badge badge-accent">{{ item.fixed_count | num }}</span></td>
+                            <td class="text-end">{{ item.pct_fixed | num(1) }} %</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <div class="col-lg-6">
+        <section class="glass-card h-100 fade-in" aria-labelledby="quality-chart-title">
+            <h2 class="h5 mb-2" id="quality-chart-title">Proporção de Registos Corrigidos por Coluna</h2>
+            {% if graph_json %}
+            <div id="quality-chart" class="chart-container" style="min-height: 320px;" role="img"
+                 aria-label="Gráfico de registos intactos versus corrigidos">
+                <div class="chart-loading"><div class="spinner-border text-accent" role="status"></div></div>
+            </div>
+            {% endif %}
+        </section>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if graph_json %}
+<script>
+    const qualityFigure = {{ graph_json | safe }};
+    renderPlotlyChart("quality-chart", qualityFigure);
+</script>
+{% endif %}
+{% endblock %}

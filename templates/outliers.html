@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+
+{% block title %}Detecção de Outliers{% endblock %}
+
+{% block content %}
+{% set var_meta = dictionary.get(selected_variable, {}) %}
+
+<header class="page-header fade-in">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-end gap-3">
+        <div>
+            <span class="eyebrow"><i class="bi bi-bullseye"></i> Análise Técnica · Valores Inconsistentes &amp; Atípicos</span>
+            <h1 class="page-title">Detecção de Outliers</h1>
+            <p class="page-subtitle">
+                Auditoria técnica coluna a coluna e resultados da aplicação dos métodos <strong>Z-Score</strong>,
+                <strong>IQR / Boxplot</strong>, <strong>Teste de Grubbs</strong>, <strong>ECOD</strong>,
+                <strong>K-NN</strong>, <strong>DBSCAN</strong> e <strong>LOF</strong>.
+            </p>
+        </div>
+        <a href="{{ url_for('teoria') }}#teoria-outliers" class="btn btn-sm badge-soft py-2 px-3">
+            <i class="bi bi-journal-bookmark me-1 text-accent"></i>Ver Explicações e Base Teórica
+        </a>
+    </div>
+</header>
+
+<!-- ================= 1. TABELA POR COLUNA: INCONSISTENTES E OUTLIERS ================= -->
+<section class="glass-card mb-5 fade-in" aria-labelledby="col-summary-title">
+    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center mb-3 gap-2">
+        <div>
+            <h2 class="h4 mb-1" id="col-summary-title">1. Quantidade de Campos com Valores Inconsistentes ou Outliers por Coluna</h2>
+            <p class="text-secondary small mb-0">
+                Levantamento técnico nas 29 colunas da base (<code>2 238</code> registos por coluna): inconsistências no CSV bruto e contagem univariada em cada método.
+            </p>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-glass table-sm align-middle mb-0" id="column-outliers-table">
+            <thead>
+                <tr>
+                    <th>Coluna</th>
+                    <th>Nome</th>
+                    <th class="text-end">Inconsistentes (Bruto)</th>
+                    <th class="text-end" title="Cercas de Tukey k = 1,5">IQR Mod. (1,5)</th>
+                    <th class="text-end" title="Cercas de Tukey k = 3,0 (Extremos)">IQR Ext. (3,0)</th>
+                    <th class="text-end" title="|z| > 3,0">Z-Score (3σ)</th>
+                    <th class="text-end" title="Z-Score Modificado |Mz| > 3,5 (MAD)">Z-Mod (MAD)</th>
+                    <th class="text-end" title="Teste de Grubbs iterativo (α = 5%)">Grubbs (5%)</th>
+                    <th class="text-end" title="Empirical Cumulative Distribution-based Outlier Detection (5%)">ECOD (5%)</th>
+                    <th class="text-end" title="K-Nearest Neighbors (5%)">K-NN (5%)</th>
+                    <th class="text-end" title="DBSCAN (pontos de ruído label = -1)">DBSCAN</th>
+                    <th class="text-end" title="Local Outlier Factor (5%)">LOF (5%)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in column_summary %}
+                <tr>
+                    <td><code>{{ row.column }}</code></td>
+                    <td class="fw-semibold">{{ row.label }}</td>
+                    <td class="text-end">
+                        {% if row.inconsistent > 0 %}
+                        <span class="badge badge-accent" title="{{ row.inconsistency_note }}">{{ row.inconsistent | num }}</span>
+                        {% else %}
+                        <span class="text-secondary">0</span>
+                        {% endif %}
+                    </td>
+                    {% if row.is_quantitative %}
+                    <td class="text-end fw-semibold">{{ row.iqr_mod | num }}</td>
+                    <td class="text-end">{{ row.iqr_ext | num }}</td>
+                    <td class="text-end">{{ row.zscore | num }}</td>
+                    <td class="text-end">{{ row.mod_zscore | num }}</td>
+                    <td class="text-end">{{ row.grubbs | num }}</td>
+                    <td class="text-end">{{ row.ecod | num }}</td>
+                    <td class="text-end">{{ row.knn | num }}</td>
+                    <td class="text-end">{{ row.dbscan | num }}</td>
+                    <td class="text-end">{{ row.lof | num }}</td>
+                    {% else %}
+                    <td colspan="9" class="text-center text-secondary small">Variável identificadora / categórica ({{ row.type }})</td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- ================= 2. FILTROS E DIAGNÓSTICO INTERATIVO ================= -->
+<form method="post" action="{{ url_for('outliers') }}" class="glass-card filter-bar mb-4 fade-in" id="outlier-filter-form">
+    <div class="row g-3 align-items-end">
+        <div class="col-md-4">
+            <label for="team-select" class="form-label"><i class="bi bi-people me-1"></i>Time</label>
+            <select class="form-select" id="team-select" name="team" onchange="this.form.submit()">
+                <option value="ALL" {% if selected_team == 'ALL' %}selected{% endif %}>Todos os times</option>
+                {% for t in teams %}
+                <option value="{{ t }}" {% if t == selected_team %}selected{% endif %}>{{ t }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label for="variable-select" class="form-label"><i class="bi bi-sliders me-1"></i>Variável</label>
+            <select class="form-select" id="variable-select" name="variable" onchange="this.form.submit()">
+                {% for v in variables %}
+                <option value="{{ v }}" {% if v == selected_variable %}selected{% endif %}>
+                    {{ v }} — {{ dictionary.get(v, {}).get('label', v) }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label for="method-select" class="form-label"><i class="bi bi-funnel me-1"></i>Método de Deteção Ativo</label>
+            <select class="form-select" id="method-select" name="method" onchange="this.form.submit()">
+                {% for m_key, m_label in methods.items() %}
+                <option value="{{ m_key }}" {% if m_key == selected_method %}selected{% endif %}>{{ m_label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+    <noscript><button type="submit" class="btn btn-accent mt-3">Aplicar filtros</button></noscript>
+</form>
+
+<!-- ================= CARTÕES COMPARATIVOS DOS MÉTODOS ================= -->
+<section class="row g-3 mb-4" aria-label="Comparação de métodos de deteção">
+    {% for item in method_counts %}
+    <div class="col-6 col-md-4 col-xl-4">
+        <div class="glass-card kpi-card fade-in"
+             style="{% if item.key == selected_method %}border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent);{% endif %}">
+            <div class="d-flex justify-content-between align-items-center">
+                <i class="bi bi-bullseye kpi-icon"></i>
+                <span class="badge {% if item.key == selected_method %}badge-accent{% else %}badge-soft{% endif %}">
+                    {{ item.pct | num(2) }} %
+                </span>
+            </div>
+            <div class="kpi-value">{{ item.count | num }}</div>
+            <div class="kpi-label">{{ item.label }}</div>
+        </div>
+    </div>
+    {% endfor %}
+</section>
+
+<!-- ================= GRÁFICO (BOXPLOT + EXTREMOS) E PARÂMETROS ================= -->
+<div class="row g-4 mb-5">
+    <div class="col-lg-8">
+        <section class="glass-card h-100 fade-in" aria-labelledby="outlier-chart-title">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h2 class="h5 mb-0" id="outlier-chart-title">2. Dispersão &amp; Boxplot de Extremos · {{ selected_variable }}</h2>
+                <span class="badge badge-accent">{{ n_outliers | num }} outliers em {{ n_total | num }} jogos</span>
+            </div>
+            {% if graph_json %}
+            <div id="outlier-chart" class="chart-container" role="img"
+                 aria-label="Gráfico de dispersão e boxplot com outliers destacados">
+                <div class="chart-loading"><div class="spinner-border text-accent" role="status"></div></div>
+            </div>
+            {% endif %}
+        </section>
+    </div>
+
+    <div class="col-lg-4">
+        <section class="glass-card h-100 fade-in d-flex flex-column justify-content-between" aria-labelledby="outlier-info-title">
+            <div>
+                <h2 class="h5 mb-3" id="outlier-info-title">Limites &amp; Teste de Grubbs ({{ selected_variable }})</h2>
+                <div class="insight-grid">
+                    <div class="insight">
+                        <span class="insight-label">Método Ativo</span>
+                        <span class="insight-value small">{{ methods[selected_method] }}</span>
+                    </div>
+                    <div class="insight">
+                        <span class="insight-label">Outliers Detetados</span>
+                        <span class="insight-value text-accent">{{ n_outliers | num }} ({{ pct_outliers | num(2) }} %)</span>
+                    </div>
+                    <div class="insight">
+                        <span class="insight-label">Cercas Moderadas (1,5·IQR)</span>
+                        <span class="insight-value">[{{ lower_iqr | num }} ; {{ upper_iqr | num }}]</span>
+                    </div>
+                    <div class="insight">
+                        <span class="insight-label">Cercas Extremas (3,0·IQR)</span>
+                        <span class="insight-value">[{{ lower_ext | num }} ; {{ upper_ext | num }}]</span>
+                    </div>
+                    <div class="insight">
+                        <span class="insight-label">Estatística G (Grubbs)</span>
+                        <span class="insight-value"><code>G = {{ grubbs_info.g_stat | num(3) }}</code> (Crít: {{ grubbs_info.g_crit | num(3) }})</span>
+                    </div>
+                    <div class="insight">
+                        <span class="insight-label">p-valor (Grubbs)</span>
+                        <span class="insight-value">
+                            {{ grubbs_info.p_value | num(4) }}
+                            {% if grubbs_info.is_outlier %}
+                            <span class="badge badge-accent ms-1">Significativo</span>
+                            {% else %}
+                            <span class="badge badge-soft ms-1">Não signif.</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pt-3 mt-3 border-top" style="border-color: var(--border) !important;">
+                <a href="{{ url_for('teoria') }}#teoria-outliers" class="btn btn-sm badge-soft w-100 py-2">
+                    <i class="bi bi-journal-bookmark me-1 text-accent"></i>Consultar Teoria deste Método
+                </a>
+            </div>
+        </section>
+    </div>
+</div>
+
+<!-- ================= 3. TABELA DE JOGOS OUTLIERS ================= -->
+<section class="glass-card fade-in" aria-labelledby="outlier-table-title">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h2 class="h5 mb-1" id="outlier-table-title">3. Registos Classificados como Outliers ({{ methods[selected_method] }})</h2>
+            <p class="text-secondary small mb-0">Ordenados de forma decrescente por <code>{{ selected_variable }}</code> (máx. 50 exibidos).</p>
+        </div>
+        <span class="badge badge-accent">{{ n_outliers | num }} registos</span>
+    </div>
+
+    {% if outlier_rows %}
+    <div class="table-responsive">
+        <table class="table table-glass table-sm small align-middle mb-0" id="outlier-records-table">
+            <thead>
+                <tr>
+                    {% for c in outlier_cols %}
+                    <th {% if c == selected_variable %}class="text-accent"{% endif %}>{{ c }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in outlier_rows %}
+                <tr>
+                    {% for v in row %}
+                    <td {% if outlier_cols[loop.index0] == selected_variable %}class="fw-bold text-accent"{% endif %}>
+                        {% if v is none %}<span class="text-missing">NaN</span>{% else %}{{ v }}{% endif %}
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i class="bi bi-check2-all"></i>
+        <p class="mb-0">Nenhum outlier detetado para este filtro e método.</p>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}
+
+{% block scripts %}
+{% if graph_json %}
+<script>
+    const outlierFigure = {{ graph_json | safe }};
+    renderPlotlyChart("outlier-chart", outlierFigure);
+</script>
+{% endif %}
+{% endblock %}

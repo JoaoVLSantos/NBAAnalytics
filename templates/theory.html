@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block title %}Explicações e Base Teórica{% endblock %}
+
+{% block content %}
+<header class="page-header fade-in">
+    <span class="eyebrow"><i class="bi bi-journal-bookmark"></i> Referencial Metodológico</span>
+    <h1 class="page-title">Explicações e Base Teórica</h1>
+    <p class="page-subtitle">
+        Fundamentação matemática e estatística dos mecanismos de ausência de dados (MCAR, MAR e MNAR),
+        dos testes formais de diagnóstico de missing e dos algoritmos univariados e multivariados de
+        deteção de outliers. Utilize os botões em cada cartão para ir diretamente à aplicação prática do método.
+    </p>
+</header>
+
+<!-- ================= 1. MECANISMOS CLÁSSICOS: MCAR, MAR E MNAR ================= -->
+<section class="mb-5 fade-in" id="teoria-mecanismos" aria-labelledby="mechanisms-title">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3 gap-2">
+        <div>
+            <h2 class="h4 mb-1" id="mechanisms-title">1. Mecanismos Clássicos de Dados Ausentes (Rubin, 1976)</h2>
+            <p class="text-secondary small mb-0">
+                Classificação formal de por que os dados faltam num conjunto de dados (<code>Y = (Y_obs, Y_mis)</code>, onde <code>R = 0</code> indica ausência).
+            </p>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        {% for m in mechanisms %}
+        <div class="col-lg-4" id="mec-{{ m.code | lower }}">
+            <div class="glass-card h-100 d-flex flex-column justify-content-between">
+                <div>
+                    <div class="mb-2">
+                        <span class="badge badge-accent fs-6 mb-2 d-inline-block">{{ m.code }}</span>
+                        <h3 class="h6 fw-bold mb-2">{{ m.title }}</h3>
+                        <div class="px-2 py-1 rounded-2 mb-3"
+                             style="background: rgba(249, 115, 22, 0.08); border: 1px solid rgba(249, 115, 22, 0.22);">
+                            <code class="d-block text-center">{{ m.formula }}</code>
+                        </div>
+                    </div>
+                    <p class="text-secondary small mb-3">{{ m.description }}</p>
+
+                    <div class="insight-grid mb-3">
+                        <div class="insight flex-column align-items-start gap-1">
+                            <span class="insight-label"><i class="bi bi-dribbble me-1 text-accent"></i>Exemplo na NBA</span>
+                            <span class="small">{{ m.nba_example }}</span>
+                        </div>
+                        <div class="insight flex-column align-items-start gap-1">
+                            <span class="insight-label"><i class="bi bi-shield-check me-1 text-accent"></i>Impacto Analítico</span>
+                            <span class="small">{{ m.consequence }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-2 border-top" style="border-color: var(--border) !important;">
+                    {% if m.code == 'MCAR' %}
+                    <a href="{{ url_for('qualidade', sim_mode='mcar') }}#tests-results-section" class="btn btn-accent btn-sm w-100">
+                        <i class="bi bi-play-fill me-1"></i>Ver Aplicação do Cenário MCAR
+                    </a>
+                    {% elif m.code == 'MAR' %}
+                    <a href="{{ url_for('qualidade', sim_mode='mar') }}#tests-results-section" class="btn btn-accent btn-sm w-100">
+                        <i class="bi bi-play-fill me-1"></i>Ver Aplicação do Cenário MAR
+                    </a>
+                    {% else %}
+                    <a href="{{ url_for('qualidade') }}#impute-section" class="btn btn-accent btn-sm w-100">
+                        <i class="bi bi-play-fill me-1"></i>Ver Diagnóstico e Imputação
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+
+<!-- ================= 2. TESTES ESTATÍSTICOS DE MISSING ================= -->
+<section class="mb-5 fade-in" id="teoria-testes-missing" aria-labelledby="tests-theory-title">
+    <div class="mb-3">
+        <h2 class="h4 mb-1" id="tests-theory-title">2. Testes Estatísticos de Diagnóstico de Dados Ausentes</h2>
+        <p class="text-secondary small mb-0">
+            Como e por que utilizar o Teste de Little, Teste de Jamshidian-Jalal, Teste de Listing e Schlittgen (LS) e Regressão Logística de Fairclough.
+        </p>
+    </div>
+
+    <div class="row g-4">
+        {% for t in tests_guide %}
+        <div class="col-lg-6" id="teoria-{{ t.id }}">
+            <div class="glass-card h-100 d-flex flex-column justify-content-between">
+                <div>
+                    <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
+                        <span class="badge badge-accent">Diagnóstico de Missing</span>
+                        <code class="small">src/methods/{{ t.id }}.py</code>
+                    </div>
+                    <h3 class="h6 fw-bold mb-2 text-accent">{{ t.name }}</h3>
+                    <div class="px-2 py-1 rounded-2 mb-3"
+                         style="background: rgba(249, 115, 22, 0.08); border: 1px solid rgba(249, 115, 22, 0.22);">
+                        <code class="d-block text-center small">{{ t.hypothesis }}</code>
+                    </div>
+
+                    <div class="mb-2">
+                        <strong class="small text-uppercase" style="color: var(--text-muted); letter-spacing: .05em;">
+                            <i class="bi bi-gear me-1 text-accent"></i>Como utilizar:
+                        </strong>
+                        <p class="small text-secondary mb-2">{{ t.how_to_use }}</p>
+                    </div>
+
+                    <div class="mb-3">
+                        <strong class="small text-uppercase" style="color: var(--text-muted); letter-spacing: .05em;">
+                            <i class="bi bi-lightbulb me-1 text-accent"></i>Por que utilizar:
+                        </strong>
+                        <p class="small text-secondary mb-0">{{ t.why_use }}</p>
+                    </div>
+                </div>
+
+                <div class="d-flex flex-wrap gap-2 pt-3 border-top" style="border-color: var(--border) !important;">
+                    <a href="{{ url_for('qualidade', sim_mode='real') }}#test-{{ t.id }}" class="btn btn-accent btn-sm flex-grow-1">
+                        <i class="bi bi-arrow-right-circle me-1"></i>Ver Aplicação na Base Real
+                    </a>
+                    <a href="{{ url_for('qualidade', sim_mode='mar') }}#test-{{ t.id }}" class="btn btn-sm badge-soft py-2 px-3">
+                        <i class="bi bi-lightning-charge me-1 text-accent"></i>Testar em Simulação MAR
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+
+<!-- ================= 3. MÉTODOS DE DETEÇÃO DE OUTLIERS ================= -->
+<section class="fade-in" id="teoria-outliers" aria-labelledby="outlier-theory-title">
+    <div class="mb-3">
+        <h2 class="h4 mb-1" id="outlier-theory-title">3. Métodos de Detecção de Outliers e Anomalias</h2>
+        <p class="text-secondary small mb-0">
+            Fundamentação teórica dos métodos univariados e multivariados: IQR / Boxplot, Z-Score, Teste de Grubbs, ECOD, K-NN, DBSCAN e LOF.
+        </p>
+    </div>
+
+    <div class="row g-4">
+        {% for item in theory_guide %}
+        <div class="col-lg-6" id="teoria-{{ item.key }}">
+            <div class="glass-card h-100 d-flex flex-column justify-content-between">
+                <div>
+                    <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
+                        <span class="badge badge-accent fs-6">{{ item.code }}</span>
+                        <span class="badge badge-soft">{{ item.category }}</span>
+                    </div>
+                    <h3 class="h6 fw-bold mb-2">{{ item.name }}</h3>
+                    <div class="px-2 py-1 rounded-2 mb-3"
+                         style="background: rgba(249, 115, 22, 0.08); border: 1px solid rgba(249, 115, 22, 0.22);">
+                        <code class="d-block text-center small">{{ item.formula }}</code>
+                    </div>
+                    <p class="text-secondary small mb-3">{{ item.theory }}</p>
+
+                    <div class="insight-grid mb-3">
+                        <div class="insight flex-column align-items-start gap-1">
+                            <span class="insight-label"><i class="bi bi-check2-circle me-1 text-accent"></i>Por que e quando utilizar</span>
+                            <span class="small">{{ item.why_use }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex flex-wrap gap-2 pt-2 border-top" style="border-color: var(--border) !important;">
+                    <a href="{{ url_for('outliers', method=item.key) }}#outlier-filter-form" class="btn btn-accent btn-sm flex-grow-1">
+                        <i class="bi bi-bullseye me-1"></i>Aplicar {{ item.code }} nos Dados
+                    </a>
+                    {% if item.key == 'iqr' %}
+                    <a href="{{ url_for('outliers', method='iqr_ext') }}#outlier-filter-form" class="btn btn-sm badge-soft py-2 px-3">
+                        <i class="bi bi-arrows-angle-expand me-1 text-accent"></i>Ver Extremos (k = 3,0)
+                    </a>
+                    {% elif item.key == 'zscore' %}
+                    <a href="{{ url_for('outliers', method='mod_zscore') }}#outlier-filter-form" class="btn btn-sm badge-soft py-2 px-3">
+                        <i class="bi bi-shield-shaded me-1 text-accent"></i>Ver Z-Score Modificado (MAD)
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}
+
