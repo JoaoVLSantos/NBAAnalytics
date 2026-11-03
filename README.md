@@ -1,5 +1,7 @@
 # 🏀 NBA Analytics — Qualidade de Dados, Outliers e Estatística Descritiva
 
+🌐 **Aplicação Online (Vercel):** [https://nba-analytics-sooty.vercel.app/](https://nba-analytics-sooty.vercel.app/)
+
 Aplicação web interativa desenvolvida em **Flask** e **Plotly** para auditoria de qualidade de dados, diagnóstico formal de valores ausentes (*missing values*), detecção univariada e multivariada de *outliers* e análise estatística descritiva sobre estatísticas oficiais de partidas da temporada regular da **NBA temporada 25/26** (`2 238` registos e `29` variáveis).
 
 ---
@@ -165,8 +167,7 @@ Aceda a **http://127.0.0.1:5000** no navegador.
 
 ## ☁️ Hospedagem na Vercel
 
-O projeto já está configurado para execução **Serverless** na **Vercel** através do arquivo [`vercel.json`](vercel.json):
+A aplicação encontra-se publicada em produção na **Vercel**:
+* **URL de Produção:** [https://nba-analytics-sooty.vercel.app/](https://nba-analytics-sooty.vercel.app/)
 
-1. Suba o repositório para o **GitHub**.
-2. Aceda a [vercel.com/new](https://vercel.com/new) e importe o repositório `NBAAnalytics`.
-3. Mantenha as configurações padrão (**Root Directory**: `./`) e clique em **Deploy**.
+O projeto está configurado para execução **Serverless** através do arquivo [`vercel.json`](vercel.json). Qualquer novo `git push` para a branch `main` no GitHub atualiza automaticamente o deploy na Vercel.
